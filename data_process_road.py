@@ -112,8 +112,8 @@ def data_process(data_path, name, patch_size, stride, mode):
                 img_list.append(ToTensor()(img))
                 gt_list.append(ToTensor()(gt))
         elif name == "MYROAD":
-            tiles_dir = os.path.join(data_path, "tiles")
-            masks_dir = os.path.join(data_path, "masks")
+            tiles_dir = os.path.join(data_path, "tiles_up")
+            masks_dir = os.path.join(data_path, "masks_26apr")
 
             tile_bases = sorted({f.rsplit('_band', 1)[0] for f in os.listdir(tiles_dir)})
             
