@@ -103,7 +103,8 @@ def data_process(data_path, patch_size, stride, mode):
         plt.suptitle(f"{tile_base}", fontsize=12)
         plt.subplots_adjust(top=0.88, bottom=0.05, left=0.05, right=0.95)
         plt.savefig(os.path.join(save_dir, f"{tile_base}.png"), dpi=150)
-        plt.close()
+        plt.close('all')   # <- THIS clears everything from RAM immediately after saving
+
 
     # --- Normalization ---
     img_list = normalization(img_list)
