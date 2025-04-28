@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torch.nn as nn
+from torch import nn
 from PIL import Image
 from torchvision.transforms import Normalize
 import matplotlib.pyplot as plt
@@ -24,12 +24,8 @@ def data_process(data_path, patch_size, stride, mode):
     # Find all tile base names
     tile_bases = sorted({f.rsplit('_band', 1)[0] for f in os.listdir(tiles_dir)})
 
-    img_list = []
-    gt_list = []
-
     print(f"\nProcessing {len(tile_bases)} tiles...\n")
 
-    # Load and visualize each tile
     for tile_base in tile_bases:
         bands = []
         masks = []
@@ -75,8 +71,11 @@ def data_process(data_path, patch_size, stride, mode):
             image_tensor = F.pad(image_tensor, (0, pad_w, 0, pad_h), value=0)
             mask_tensor = F.pad(mask_tensor, (0, pad_w, 0, pad_h), value=0)
 
-        img_list.append(image_tensor)
-        gt_list.append(mask_tensor)
+        # --- Normalize each image individually ---
+        mean = torch.mean(image_tensor)
+        std = torch.std(image_tensor)
+        image_tensor = Normalize([mean], [std])(image_tensor)
+        image_tensor = (image_tensor - image_tensor.min()) / (image_tensor.max() - image_tensor.min())
 
         # --- Visualization immediately after loading each tile ---
         image_np = image_tensor.numpy()
@@ -102,21 +101,17 @@ def data_process(data_path, patch_size, stride, mode):
         plt.savefig(os.path.join(save_dir, f"{tile_base}.png"), dpi=150)
         plt.close('all')  # Critical to free memory
 
-    print(f"\nSaved visualizations for ALL {len(tile_bases)} samples to '{save_dir}'\n")
+        # --- Save immediately ---
+        if mode == "training":
+            img_patches = get_patch([image_tensor], patch_size, stride)
+            gt_patches = get_patch([mask_tensor], patch_size, stride)
+            save_patch(img_patches, save_path, "img_patch")
+            save_patch(gt_patches, save_path, "gt_patch")
+        elif mode == "test":
+            save_each_image([image_tensor], save_path, "img")
+            save_each_image([mask_tensor], save_path, "gt")
 
-    # --- Normalization ---
-    img_list = normalization(img_list)
-
-    # --- Save patches or full images ---
-    if mode == "training":
-        img_patch = get_patch(img_list, patch_size, stride)
-        gt_patch = get_patch(gt_list, patch_size, stride)
-        save_patch(img_patch, save_path, "img_patch")
-        save_patch(gt_patch, save_path, "gt_patch")
-
-    elif mode == "test":
-        save_each_image(img_list, save_path, "img")
-        save_each_image(gt_list, save_path, "gt")
+    print(f"\n✅ Completed saving visualizations and processed data for {len(tile_bases)} tiles.\n")
 
 def get_patch(imgs_list, patch_size, stride):
     image_list = []
@@ -133,26 +128,17 @@ def get_patch(imgs_list, patch_size, stride):
 
 def save_patch(imgs_list, path, type_name):
     for i, img in enumerate(imgs_list):
-        with open(os.path.join(path, f'{type_name}_{i}.pkl'), 'wb') as file:
+        filename = f'{type_name}_{i}.pkl'
+        with open(os.path.join(path, filename), 'wb') as file:
             pickle.dump(np.array(img), file)
-            print(f"Saved {type_name} : {type_name}_{i}.pkl")
+        print(f"Saved {filename}")
 
 def save_each_image(imgs_list, path, type_name):
     for i, img in enumerate(imgs_list):
-        with open(os.path.join(path, f'{type_name}_{i}.pkl'), 'wb') as file:
+        filename = f'{type_name}_{i}.pkl'
+        with open(os.path.join(path, filename), 'wb') as file:
             pickle.dump(np.array(img), file)
-            print(f"Saved {type_name} : {type_name}_{i}.pkl")
-
-def normalization(imgs_list):
-    imgs = torch.cat(imgs_list, dim=0)
-    mean = torch.mean(imgs)
-    std = torch.std(imgs)
-    normalized_list = []
-    for img in imgs_list:
-        norm = Normalize([mean], [std])(img)
-        norm = (norm - norm.min()) / (norm.max() - norm.min())
-        normalized_list.append(norm)
-    return normalized_list
+        print(f"Saved {filename}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
