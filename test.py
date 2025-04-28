@@ -1,6 +1,6 @@
 import argparse
 import torch
-from bunch import Bunch
+from types import SimpleNamespace as Bunch
 from ruamel.yaml import safe_load
 from torch.utils.data import DataLoader
 import models

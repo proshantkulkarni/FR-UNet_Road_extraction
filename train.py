@@ -1,5 +1,5 @@
 import argparse
-from bunch import Bunch
+from types import SimpleNamespace as Bunch
 from loguru import logger
 from ruamel.yaml import safe_load
 from torch.utils.data import DataLoader
