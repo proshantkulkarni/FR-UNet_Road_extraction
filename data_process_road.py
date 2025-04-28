@@ -1,13 +1,12 @@
 import os
 import argparse
 import pickle
-import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from PIL import Image
-from torchvision.transforms import Normalize, ToTensor
+from torchvision.transforms import Normalize
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -19,6 +18,8 @@ def data_process(data_path, patch_size, stride, mode):
 
     # Ensure directories
     os.makedirs(save_path, exist_ok=True)
+    save_dir = 'save_picture'
+    os.makedirs(save_dir, exist_ok=True)
 
     # Find all tile base names
     tile_bases = sorted({f.rsplit('_band', 1)[0] for f in os.listdir(tiles_dir)})
@@ -26,7 +27,9 @@ def data_process(data_path, patch_size, stride, mode):
     img_list = []
     gt_list = []
 
-    # Load each tile
+    print(f"\nProcessing {len(tile_bases)} tiles...\n")
+
+    # Load and visualize each tile
     for tile_base in tile_bases:
         bands = []
         masks = []
@@ -75,13 +78,7 @@ def data_process(data_path, patch_size, stride, mode):
         img_list.append(image_tensor)
         gt_list.append(mask_tensor)
 
-    # --- Visualization ---
-    save_dir = 'save_picture'
-    os.makedirs(save_dir, exist_ok=True)
-    print(f"\nSaving visualizations for ALL {len(img_list)} samples to '{save_dir}'...\n")
-
-    for idx, (image_tensor, mask_tensor) in enumerate(zip(img_list, gt_list)):
-        tile_base = tile_bases[idx]
+        # --- Visualization immediately after loading each tile ---
         image_np = image_tensor.numpy()
         mask_np = mask_tensor.squeeze(0).numpy()
 
@@ -103,8 +100,9 @@ def data_process(data_path, patch_size, stride, mode):
         plt.suptitle(f"{tile_base}", fontsize=12)
         plt.subplots_adjust(top=0.88, bottom=0.05, left=0.05, right=0.95)
         plt.savefig(os.path.join(save_dir, f"{tile_base}.png"), dpi=150)
-        plt.close('all')   # <- THIS clears everything from RAM immediately after saving
+        plt.close('all')  # Critical to free memory
 
+    print(f"\nSaved visualizations for ALL {len(tile_bases)} samples to '{save_dir}'\n")
 
     # --- Normalization ---
     img_list = normalization(img_list)
